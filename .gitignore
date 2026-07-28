@@ -1,0 +1,4 @@
+finrpa-enterprise/
+.env
+.env.*
+!.env.example
