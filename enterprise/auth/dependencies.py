@@ -106,6 +106,18 @@ async def require_admin(
     return user
 
 
+async def require_platform_admin(
+    user: CurrentUser,
+) -> UserContext:
+    """Require the existing highest enterprise role for development operations."""
+    if not user.is_super_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Platform admin role required",
+        )
+    return user
+
+
 def require_department_operator(department_id: str):
     """Factory: create a dependency that requires operator role in a specific department.
 

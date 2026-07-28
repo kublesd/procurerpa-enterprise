@@ -18,12 +18,13 @@ Constraints:
 """
 
 import sqlalchemy as sa
+
 from alembic import op
 
 # revision identifiers
 revision = "ent_001"
-down_revision = None  # Will be set to the latest Skyvern migration
-branch_labels = ("enterprise",)
+down_revision = "a86c9fdba6b3"
+branch_labels = None
 depends_on = None
 
 

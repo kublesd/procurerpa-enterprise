@@ -38,8 +38,6 @@ describe("ScreenshotDiff component", () => {
     // Click to zoom
     fireEvent.click(img!.parentElement!);
 
-    // Overlay should appear with zoomed image
-    const overlay = container.querySelector(".fixed");
     // The overlay is rendered at document level, check for the zoomed image
     const allImages = document.querySelectorAll("img");
     expect(allImages.length).toBeGreaterThanOrEqual(1);

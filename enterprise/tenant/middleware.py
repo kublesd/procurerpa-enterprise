@@ -22,6 +22,7 @@ LOG = structlog.get_logger()
 # Routes that skip tenant context injection
 _WHITELIST_PREFIXES = (
     "/api/v1/enterprise/auth/login",
+    "/api/v1/enterprise/procurement/health",
     "/health",
     "/docs",
     "/openapi.json",

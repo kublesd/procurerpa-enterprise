@@ -5,7 +5,11 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import create_async_engine
 
+import enterprise.auth.models  # noqa: F401 - register enterprise models with Base.metadata
+import enterprise.procurement.models  # noqa: F401 - register procurement models with Base.metadata
 from alembic import context
+from skyvern.forge.sdk.db import models
+from skyvern.forge.sdk.settings_manager import SettingsManager
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -20,17 +24,12 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-from skyvern.forge.sdk.db import models
-import enterprise.auth.models  # noqa: F401 - register enterprise models with Base.metadata
-
 target_metadata = models.Base.metadata
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
-from skyvern.forge.sdk.settings_manager import SettingsManager
-
 config.set_main_option("sqlalchemy.url", SettingsManager.get_settings().DATABASE_STRING)
 
 

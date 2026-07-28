@@ -13,6 +13,15 @@ class RoleType(str, enum.Enum):
     VIEWER = "viewer"
 
 
+PROCUREMENT_ROLE_MAP = {
+    RoleType.SUPER_ADMIN.value: "platform_admin",
+    RoleType.ORG_ADMIN.value: "procurement_manager",
+    RoleType.OPERATOR.value: "procurement_operator",
+    RoleType.APPROVER.value: "procurement_approver",
+    RoleType.VIEWER.value: "viewer",
+}
+
+
 class RiskLevel(str, enum.Enum):
     """Risk level for task actions."""
 

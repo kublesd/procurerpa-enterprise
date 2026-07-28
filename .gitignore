@@ -32,6 +32,7 @@ env/
 
 # Node.js (skyvern-frontend)
 node_modules/
+.npm-cache/
 skyvern-frontend/dist/
 
 # Docker & Runtime Artifacts

@@ -72,6 +72,7 @@ class DepartmentModel(Base):
 
     __table_args__ = (
         UniqueConstraint("organization_id", "department_code", name="uq_org_dept_code"),
+        UniqueConstraint("organization_id", "department_id", name="uq_org_department_id"),
         Index("idx_dept_org", "organization_id"),
     )
 
@@ -237,7 +238,7 @@ class TaskExtensionModel(Base):
     __tablename__ = "task_extensions"
 
     extension_id = Column(String, primary_key=True, default=generate_task_extension_id)
-    task_id = Column(String, nullable=False, unique=True, index=True)
+    task_id = Column(String, ForeignKey("tasks.task_id"), nullable=False, unique=True, index=True)
     organization_id = Column(
         String,
         ForeignKey("organizations.organization_id"),
@@ -256,6 +257,7 @@ class TaskExtensionModel(Base):
         nullable=True,
         index=True,
     )
+    category_id = Column(String, ForeignKey("procurement_categories.category_id"), nullable=True, index=True)
     risk_level = Column(String, default=RiskLevel.LOW.value, nullable=False)
     created_by = Column(
         String,

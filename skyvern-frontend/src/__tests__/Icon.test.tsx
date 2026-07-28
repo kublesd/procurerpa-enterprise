@@ -27,7 +27,6 @@ describe("Icon component", () => {
   });
 
   it("returns null for unknown icon name", () => {
-    // @ts-expect-error Testing unknown name
     const { container } = render(<Icon name="nonexistent_icon_xyz" />);
     expect(container.innerHTML).toBe("");
   });

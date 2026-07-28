@@ -150,6 +150,8 @@ def create_api_app() -> FastAPI:
     """
     Start the agent server.
     """
+    settings.validate_runtime_security()
+
     # CRITICAL: Initialize OTEL FIRST, before any other code runs
     # This must happen before start_forge_app() because that function
     # creates database connections. If we don't instrument the libraries
@@ -185,13 +187,14 @@ def create_api_app() -> FastAPI:
     fastapi_app.add_middleware(TenantIsolationMiddleware)
 
     # Enterprise extension routes
-    from enterprise.auth.routes import router as enterprise_auth_router
-    from enterprise.tenant.routes import router as enterprise_tenant_router
     from enterprise.approval.routes import router as enterprise_approval_router
     from enterprise.audit.routes import router as enterprise_audit_router
-    from enterprise.workflows.routes import router as enterprise_workflow_router
+    from enterprise.auth.routes import router as enterprise_auth_router
     from enterprise.dashboard.routes import router as enterprise_dashboard_router
     from enterprise.llm.cache_routes import router as enterprise_cache_router
+    from enterprise.procurement.routes import router as enterprise_procurement_router
+    from enterprise.tenant.routes import router as enterprise_tenant_router
+    from enterprise.workflows.routes import router as enterprise_workflow_router
 
     fastapi_app.include_router(enterprise_auth_router, prefix="/api/v1")
     fastapi_app.include_router(enterprise_tenant_router, prefix="/api/v1")
@@ -200,6 +203,7 @@ def create_api_app() -> FastAPI:
     fastapi_app.include_router(enterprise_workflow_router, prefix="/api/v1")
     fastapi_app.include_router(enterprise_dashboard_router, prefix="/api/v1")
     fastapi_app.include_router(enterprise_cache_router, prefix="/api/v1")
+    fastapi_app.include_router(enterprise_procurement_router, prefix="/api/v1")
 
     # Populate enterprise demo data stores so all modules have data on startup
     from enterprise.demo_seed import populate_all_stores

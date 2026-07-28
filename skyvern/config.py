@@ -22,6 +22,13 @@ _DEFAULT_ENV_FILES = (
 
 LOG = logging.getLogger(__name__)
 
+_DEVELOPMENT_ENVIRONMENTS = frozenset({"local", "dev", "development"})
+_INSECURE_SECRET_KEYS = frozenset({"", "placeholder", "changeme", "change-me", "dev-only-change-before-sharing"})
+
+
+def is_development_environment(environment: str) -> bool:
+    return environment.strip().lower() in _DEVELOPMENT_ENVIRONMENTS
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=_DEFAULT_ENV_FILES, extra="ignore")
@@ -91,6 +98,9 @@ class Settings(BaseSettings):
     # Algorithm used to sign the JWT
     SIGNATURE_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # one week
+
+    # Comma-separated exact URLs for the development-only procurement smoke task.
+    PROCUREMENT_SMOKE_ALLOWED_URLS: str = "https://example.com/"
 
     # Artifact storage settings
     ARTIFACT_STORAGE_PATH: str = f"{SKYVERN_DIR}/artifacts"
@@ -565,6 +575,13 @@ class Settings(BaseSettings):
         :return: True if env is not local, else False
         """
         return self.ENV != "local"
+
+    def validate_runtime_security(self) -> None:
+        """Reject sample JWT secrets before any non-development app starts."""
+        if is_development_environment(self.ENV):
+            return
+        if self.SECRET_KEY.strip().lower() in _INSECURE_SECRET_KEYS:
+            raise RuntimeError("SECRET_KEY must be a non-placeholder value outside development")
 
     def execute_all_steps(self) -> bool:
         """
