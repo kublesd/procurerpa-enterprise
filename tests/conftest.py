@@ -1,0 +1,8 @@
+"""Shared test fixtures for ProcureRPA Enterprise."""
+
+import pytest
+
+
+@pytest.fixture(scope="session")
+def anyio_backend():
+    return "asyncio"

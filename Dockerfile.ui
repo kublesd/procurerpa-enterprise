@@ -1,0 +1,22 @@
+FROM node:20.19.5-bookworm-slim
+
+WORKDIR /app
+
+COPY skyvern-frontend/package.json skyvern-frontend/package-lock.json ./
+RUN npm ci
+
+COPY skyvern-frontend/ ./
+
+ARG VITE_API_BASE_URL=http://localhost:18000/api/v1
+ARG VITE_WSS_BASE_URL=ws://localhost:18000/api/v1
+ARG VITE_ARTIFACT_API_BASE_URL=http://localhost:18000
+
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL \
+    VITE_WSS_BASE_URL=$VITE_WSS_BASE_URL \
+    VITE_ARTIFACT_API_BASE_URL=$VITE_ARTIFACT_API_BASE_URL
+
+RUN npm run build
+
+EXPOSE 8080
+
+CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "8080"]

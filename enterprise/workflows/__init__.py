@@ -1,0 +1,1 @@
+"""Procurement scenario workflow templates."""

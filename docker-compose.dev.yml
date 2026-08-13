@@ -1,0 +1,11 @@
+# Local development only. Combine with docker-compose.yml; do not use for demos.
+services:
+  skyvern:
+    volumes:
+      - .:/app
+      - artifacts:/data/artifacts
+    command: >
+      sh -c "alembic upgrade heads &&
+      uvicorn skyvern.forge.api_app:create_api_app --factory
+      --host 0.0.0.0 --port 8000
+      --reload --reload-dir /app/enterprise --reload-dir /app/skyvern"

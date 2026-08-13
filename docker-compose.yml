@@ -1,0 +1,131 @@
+services:
+  postgres:
+    image: postgres:14.23-alpine3.23
+    restart: unless-stopped
+    ports:
+      - "15432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: skyvern
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: skyvern
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U skyvern -d skyvern"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7.4.9-alpine3.21
+    restart: unless-stopped
+    ports:
+      - "16379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Private procurement audit artifacts and quote files.
+  minio:
+    image: minio/minio:RELEASE.2025-06-13T11-33-47Z
+    restart: unless-stopped
+    ports:
+      - "19000:9000"
+      - "19001:9001"
+    volumes:
+      - minio-data:/data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER in .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in .env}
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  skyvern:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: on-failure
+    ports:
+      - "18000:8000"
+    volumes:
+      - artifacts:/data/artifacts
+    environment:
+      ENV: local
+      DATABASE_STRING: postgresql+psycopg://skyvern:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/skyvern
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in .env}
+      SIGNATURE_ALGORITHM: HS256
+      BROWSER_TYPE: chromium-headless
+      SKYVERN_STORAGE_TYPE: local
+      ARTIFACT_STORAGE_PATH: /data/artifacts
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER in .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in .env}
+      MINIO_USE_SSL: "false"
+      PROCUREMENT_SMOKE_ALLOWED_URLS: ${PROCUREMENT_SMOKE_ALLOWED_URLS:-https://example.com/}
+      PROCUREMENT_APPROVAL_URL: ${PROCUREMENT_APPROVAL_URL:-http://localhost:18080/enterprise/approvals}
+      WECOM_WEBHOOK_URL: ${WECOM_WEBHOOK_URL:-}
+      DINGTALK_WEBHOOK_URL: ${DINGTALK_WEBHOOK_URL:-}
+      SKYVERN_TELEMETRY: ${SKYVERN_TELEMETRY:-false}
+      ENABLE_OPENAI: ${ENABLE_OPENAI:-false}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ENABLE_ANTHROPIC: ${ENABLE_ANTHROPIC:-false}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ENABLE_GEMINI: ${ENABLE_GEMINI:-false}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      LLM_KEY: ${LLM_KEY:-OPENAI_GPT4O}
+      PROCUREMENT_LIGHT_LLM_KEY: ${PROCUREMENT_LIGHT_LLM_KEY:-}
+      PROCUREMENT_STANDARD_LLM_KEY: ${PROCUREMENT_STANDARD_LLM_KEY:-}
+      PROCUREMENT_HEAVY_LLM_KEY: ${PROCUREMENT_HEAVY_LLM_KEY:-}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/enterprise/procurement/health?ready=true', timeout=5)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 180s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  skyvern-ui:
+    build:
+      context: .
+      dockerfile: Dockerfile.ui
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:18000/api/v1}
+        VITE_WSS_BASE_URL: ${VITE_WSS_BASE_URL:-ws://localhost:18000/api/v1}
+        VITE_ARTIFACT_API_BASE_URL: ${VITE_ARTIFACT_API_BASE_URL:-http://localhost:18000}
+    restart: unless-stopped
+    ports:
+      - "18080:8080"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    depends_on:
+      skyvern:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
+  redis-data:
+  minio-data:
+  artifacts:
