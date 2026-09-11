@@ -1,15 +1,15 @@
-# ProcureRPA 第二阶段开发指南
+# ProcureRPA S1～S9 历史实施契约
 
 ## 1. 文档目的
 
-本指南用于把已经完成的 ProcureRPA 第一阶段功能对等实现，逐项接入真实 Skyvern、PostgreSQL、Redis、权限、审计和运行证据。
+本文件保留第二阶段 S1～S9 的原始目标、实现边界和验收门，供复核或明确重开某项能力时参考。它不负责声明当前任务、当前分支、最新验证或下一阶段；这些动态事实只写入 [`../PROGRESS.md`](../PROGRESS.md)。
 
-目标读者是对仓库不熟、推理能力较弱的开发 Agent。执行者不需要一次理解整个系统，但必须严格遵守本指南的读取顺序、阶段边界、验证命令和停止点。
+只有 `PROGRESS.md` 明确重开某个 S 阶段时，执行者才读取本文件对应小节，并按当前源码、真实调用方和代表性测试重新核对。不得因本文件存在阶段顺序而自行领取工作。
 
-- 第一阶段基线提交：`c4b2e3f`，P1～P6 采购语义功能对等已经完成。
+- 历史第一阶段标签：`c4b2e3f`；仓库历史重写后该对象不再可解析，不能用作当前 revision 证据。
 - 第一阶段演示入口：`scripts/demo_procurement_parity.py`。
 - 第二阶段不是重写第一阶段，也不是新建第二套浏览器运行时。
-- 第二阶段最终目标：真实入口不再依赖内存状态或模拟成功，并能在重启、跨租户、失败恢复和真实浏览器执行条件下重复验证。
+- 第二阶段历史目标：真实入口不再依赖内存状态或模拟成功，并能在重启、跨租户、失败恢复和真实浏览器执行条件下重复验证。
 
 旧版 P1～P6 实施细节不再放在本文件中。能力来源、第一阶段边界和技术债索引见 [`procurement_completion_gap.md`](procurement_completion_gap.md)。
 
@@ -62,104 +62,21 @@
 
 禁止新增 `EnterpriseBrowserRunner`、第二套 Playwright session、通用事件总线或与 Skyvern Task 并行的任务事实表。
 
-## 5. 每个开发会话的固定流程
+## 5. 使用方式
 
-### 5.1 开始前
+通用的开始、调查、授权、实现、验证、证据和交接流程只以 [`agent_development_workflow.md`](agent_development_workflow.md) 为准，本文件不再维护副本。
 
-依次执行，不跳步：
+明确重开某个 S 阶段时：
 
-```powershell
-git status --short
-git log -1 --oneline
-Get-Content -Raw PROGRESS.md
-Get-Content -Raw DECISIONS.md
-```
+1. 在 `PROGRESS.md` 写明唯一活动任务、范围外、验收和停止条件；
+2. 只读取本文件对应阶段的一节及其中列出的真实调用方和测试；
+3. 先核对旧描述是否仍与当前源码一致，不直接照搬文件名、迁移 head 或命令结果；
+4. 保留该阶段安全边界和负例要求，但根据当前依赖关系选择最小验证；
+5. 达到重新定义的完成门后更新 `PROGRESS.md` 并停止，不自动领取下一阶段。
 
-然后只读取：
+未在 `PROGRESS.md` 激活的 S 阶段均为历史上下文，不构成实现授权。
 
-1. 本指南中当前阶段的一节；
-2. 该节“必须读取”的源码和测试；
-3. 该阶段真实调用方；
-4. 需要安全判断时再读 `docs/agent_security_rules.md`；
-5. 需要理解 Task/Workflow 调用关系时再读 `docs/agent_architecture.md`。
-
-不要一次加载全部 `docs/`、全部 Skyvern 源码或全部历史 summary。
-
-### 5.2 领取阶段
-
-从 `PROGRESS.md` 读取唯一“当前第二阶段”。如果没有当前阶段，从本指南 S1 开始。领取后先在自己的工作说明中写一句：
-
-```text
-本次只完成 Sx：<阶段名称>；达到该阶段完成门后停止，不提前进入 Sx+1。
-```
-
-如果工作区已经存在无关修改，记录文件名并避开。不要 reset、checkout、clean 或格式化无关文件。
-
-### 5.3 修改前调查
-
-对准备修改的函数，先找定义、注册点和全部调用方：
-
-```powershell
-git grep -n "目标函数或类名" -- enterprise skyvern tests
-```
-
-必须回答四个问题后才能编辑：
-
-1. 真实 HTTP/任务入口在哪里？
-2. 组织、部门和品类来自哪个服务端对象？
-3. 当前事实写到 PostgreSQL、Redis、MinIO，还是仅写到内存？
-4. 失败后现有调用方期待 HTTP 错误、Task 状态还是人工处置记录？
-
-找不到答案时继续只读调查，不凭文件名猜测。
-
-### 5.4 最小实现顺序
-
-1. 增加一个会失败的最小测试，证明当前债务存在。
-2. 如果需要数据库字段，先写 Model 和 Alembic migration，再写 repository/query helper。
-3. 把 helper 接到一个真实调用点，不先接所有入口。
-4. 验证组织隔离、重启恢复和失败路径。
-5. 删除或绕开对应生产路径中的内存 fallback；演示路径可保留。
-6. 运行本阶段完成门；通过后更新 `PROGRESS.md` 并停止。
-
-不要为未来阶段预建接口、工厂、事件总线、配置项或空表。
-
-### 5.5 环境选择
-
-优先使用仓库已配置的 Compose 环境，因为历史 `.venv` 可能指向旧解释器。
-
-主机 Python 可导入全部依赖时：
-
-```powershell
-python -m pytest <当前阶段测试> -q
-```
-
-主机缺依赖时，不修改代码绕过导入，改用：
-
-```powershell
-docker compose exec skyvern python -m pytest <当前阶段测试> -q
-```
-
-任何环境都必须运行：
-
-```powershell
-git diff --check
-```
-
-测试导入失败、被跳过或因外部服务失败，都不能写成通过。
-
-### 5.6 结束和交接
-
-`PROGRESS.md` 只写以下事实：
-
-- 当前阶段和状态；
-- 实际修改文件；
-- 实际运行的命令及通过数量；
-- 未运行或失败的验证及原因；
-- 下一阶段只能领取什么。
-
-只有改变后续架构边界时才追加 `DECISIONS.md`。达到阶段完成门后立即停止。
-
-## 6. 第二阶段顺序和依赖
+## 6. 第二阶段历史顺序和依赖
 
 | 阶段 | 唯一目标 | 依赖 |
 | --- | --- | --- |
@@ -173,7 +90,7 @@ git diff --check
 | S8 | 成本 Dashboard 改用真实 Step 成本事实 | S7 |
 | S9 | 安全硬化、SIT、去除生产 fallback 和总验收 | S8 |
 
-不能并行领取有依赖关系的阶段。不能用 S9 的全链测试替代前面每个阶段的局部完成门。
+本表记录当时的依赖关系，不声明当前可领取项。重开阶段时仍不能用 S9 的全链测试替代前面能力的局部证据。
 
 ## 7. S1：持久化人工核验与 `NEEDS_HUMAN`
 
@@ -692,7 +609,7 @@ Gemini `RateLimitError`、浏览器不可用或依赖缺失时，保留“未验
 
 ## 16. 数据库迁移规则
 
-1. 当前企业迁移链最新已知 revision 是 `ent_008`；新迁移按 `ent_009`、`ent_010` 顺序追加。
+1. S1 开始时的历史基线是 `ent_008`，随后曾按 `ent_009`、`ent_010` 追加；当前 head 必须从迁移源码或 `alembic heads` 读取，不在本文硬编码。
 2. 一次阶段只增加该阶段需要的表、字段、索引和约束。
 3. Model 必须被 `alembic/env.py` import，避免 metadata 漏表。
 4. 外键同时保留组织上下文检查；仅有 `task_id` 外键不足以防跨租户引用。
@@ -721,18 +638,9 @@ docker compose exec skyvern alembic upgrade head
 
 错误正文只返回稳定 error code、简短安全说明和允许公开的资源 ID。堆栈、Prompt、provider 原始响应和凭据不得返回客户端。
 
-## 18. 测试证据书写模板
+## 18. 测试证据
 
-在 `PROGRESS.md` 使用以下格式，不写“应该通过”“看起来正常”：
-
-```markdown
-- Sx 实际修改：`file_a.py`、`file_b.py`、`migration.py`。
-- 目标测试：`<完整命令>` → `NN passed`。
-- 真实验证：Task `<id>`、Artifact `<id>`、Review `<id>`；结果 `<状态>`。
-- 重启验证：重启前 `<事实>`，重启后 `<事实>`。
-- 未验证：`<命令/场景>`，原因 `<具体错误类型>`。
-- 保留债务：`<只列不属于当前阶段的债务>`。
-```
+证据格式、来源分级、revision/environment 记录和失败恢复字段以 [`agent_development_workflow.md`](agent_development_workflow.md) 为准。本节只保留第二阶段特有的禁止表述。
 
 禁止使用以下表述：
 
